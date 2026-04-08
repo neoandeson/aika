@@ -1,4 +1,4 @@
-import { appendJournal, postCapture, readStdinJson } from "./shared.mjs";
+import { appendJournal, postCapture, readStdinJson, updateContext } from "./shared.mjs";
 
 const input = await readStdinJson();
 if (!input) process.exit(0);
@@ -12,3 +12,4 @@ if (transcript) entry.transcript = transcript;
 
 await appendJournal(cwd, entry);
 await postCapture({ type: "session_stop", transcript, project: cwd });
+await updateContext(cwd);
