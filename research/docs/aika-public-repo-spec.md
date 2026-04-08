@@ -1,0 +1,198 @@
+# @aikadev/aika — Public Repo Specification
+
+**Public · MIT License · npm: @aikadev/aika**
+
+> CLI + hooks + slash commands + catalog. Open source — every line auditable.
+
+---
+
+## 1. Repo Structure
+
+```
+aika/
+├── src/
+│   ├── index.ts                     # CLI entry
+│   ├── commands/
+│   │   ├── detect.ts                # Scan .claude/ → catalog.json
+│   │   ├── detect-url.ts            # Fetch GitHub repo → add to catalog
+│   │   ├── flow.ts                  # Create/edit flow.json
+│   │   ├── status.ts                # Query App for status
+│   │   ├── start.ts                 # Download + start desktop app + CBM
+│   │   ├── stop.ts                  # Stop processes
+│   │   └── doctor.ts               # Validate setup
+│   ├── detect/
+│   │   ├── scanner.ts               # Scan .claude/commands/, agents/, skills/
+│   │   └── parser.ts                # Extract command name + desc from .md
+│   ├── scaffold.ts                  # Generate .aika/ + hooks + slash commands
+│   └── app-manager.ts              # Download/start/stop binaries
+├── hooks/                           # Templates → .aika/hooks/
+│   ├── dispatcher.sh
+│   ├── on-prompt.sh
+│   └── on-stop.sh
+├── commands/                        # Templates → .claude/commands/aika/
+│   ├── status.md, next.md, detect.md, trace.md, search.md
+├── catalog/                         # Built-in kit definitions
+│   ├── gsd.json, bmad.json, gstack.json, openspec.json, _template.json
+├── schema/                          # JSON Schemas
+│   ├── catalog.schema.json, flow.schema.json, journal.schema.json, capture-event.schema.json
+├── LICENSES/
+│   └── CODEBASE-MEMORY-MIT.txt
+├── docs/
+├── package.json
+└── LICENSE                          # MIT
+```
+
+---
+
+## 2. Files Created by `aika init`
+
+```
+.claude/settings.json                 # MODIFIED: hooks + MCP entry
+.claude/commands/aika/*.md            # NEW: 5 slash commands
+
+.aika/catalog.json                    # Auto-generated (kits + commands)
+.aika/flow.json                       # User-created (steps)
+.aika/journal.jsonl                   # Append-only event log
+.aika/hooks/dispatcher.sh             # PostToolUse master dispatcher
+.aika/hooks/on-prompt.sh              # Track slash commands
+.aika/hooks/on-stop.sh                # Session complete
+```
+
+---
+
+## 3. Hook Registration (settings.json)
+
+```jsonc
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": ".aika/hooks/on-prompt.sh", "async": true }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Write|Edit|MultiEdit|Bash",
+        "hooks": [{ "type": "command", "command": ".aika/hooks/dispatcher.sh", "async": true }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": ".aika/hooks/on-stop.sh", "async": true }] }
+    ],
+    "SubagentStop": [
+      { "hooks": [{ "type": "command", "command": ".aika/hooks/on-stop.sh", "async": true }] }
+    ]
+  },
+  "mcpServers": { "aika": { "url": "http://localhost:4242/mcp" } }
+}
+```
+
+---
+
+## 4. Hook Scripts
+
+**on-prompt.sh** — track slash commands only (ignore chat):
+```bash
+#!/bin/bash
+INPUT=$(cat); PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty')
+echo "$PROMPT" | grep -qP '^/' || exit 0
+COMMAND=$(echo "$PROMPT" | grep -oP '^/[\w:-]+')
+KIT=$(echo "$COMMAND" | sed 's|^/\([^:]*\):.*|\1|')
+TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+echo "{\"ts\":\"$TS\",\"event\":\"command_start\",\"kit\":\"$KIT\",\"command\":\"$COMMAND\"}" >> "$(pwd)/.aika/journal.jsonl"
+curl -s -X POST http://localhost:4242/api/capture -H 'Content-Type: application/json' \
+  -d "{\"type\":\"command_start\",\"kit\":\"$KIT\",\"command\":\"$COMMAND\",\"project\":\"$(pwd)\"}" > /dev/null 2>&1 &
+exit 0
+```
+
+**dispatcher.sh** — route to all kit hooks + track file changes:
+```bash
+#!/bin/bash
+INPUT=$(cat)
+for hook in .claude/hooks/*.sh; do [ -f "$hook" ] && echo "$INPUT" | "$hook" & done
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.file // empty')
+[ -z "$FILE_PATH" ] && wait && exit 0
+curl -s -X POST http://localhost:4242/api/capture -H 'Content-Type: application/json' \
+  -d "{\"type\":\"file_change\",\"file\":\"$FILE_PATH\",\"project\":\"$(pwd)\"}" > /dev/null 2>&1 &
+wait && exit 0
+```
+
+**on-stop.sh** — session complete:
+```bash
+#!/bin/bash
+INPUT=$(cat); TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // empty')
+CWD=$(echo "$INPUT" | jq -r '.cwd // empty'); [ -z "$CWD" ] && CWD="$(pwd)"
+TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+echo "{\"ts\":\"$TS\",\"event\":\"stop\",\"transcript\":\"$TRANSCRIPT\"}" >> "$CWD/.aika/journal.jsonl"
+curl -s -X POST http://localhost:4242/api/capture -H 'Content-Type: application/json' \
+  -d "{\"type\":\"session_stop\",\"transcript\":\"$TRANSCRIPT\",\"project\":\"$CWD\"}" > /dev/null 2>&1 &
+exit 0
+```
+
+---
+
+## 5. Data Structures (JSON only, NO database)
+
+**catalog.json** — auto-generated by `aika detect`:
+```jsonc
+{ "detected_at": "...", "kits": {
+    "gsd": { "source": ".claude/commands/gsd/", "commands": [
+      { "name": "/gsd:execute-phase", "desc": "Execute phase", "file": "execute-phase.md" }
+    ], "command_count": 29, "agent_count": 12 }
+} }
+```
+
+**flow.json** — user-created, steps (not phases):
+```jsonc
+{ "current_step": 2, "steps": [
+    { "step": 1, "name": "requirements", "kit": "bmad", "entry_command": "/bmad:analyse", "status": "complete" },
+    { "step": 2, "name": "implementation", "kit": "gsd", "entry_command": "/gsd:init", "status": "in_progress" },
+    { "step": 3, "name": "review", "kit": "gstack", "entry_command": "/gstack:review", "status": "pending" }
+] }
+```
+
+**journal.jsonl** — append-only, 3 event types, ~1MB/year:
+```jsonc
+{"ts":"...","event":"command_start","kit":"gsd","command":"/gsd:execute-phase"}
+{"ts":"...","event":"file_change","file":"src/main.cs"}
+{"ts":"...","event":"stop","transcript":"~/.claude/.../abc.jsonl"}
+```
+
+---
+
+## 6. Global Storage
+
+```
+~/.aika/
+├── bin/aika-app                      # Wails desktop binary
+├── bin/codebase-memory-mcp           # CBM binary (MIT)
+├── config.json                       # Global settings
+├── pid                               # Process management
+└── LICENSES/
+    ├── AIKA-LICENSE
+    └── CODEBASE-MEMORY-MIT.txt       # Required MIT attribution
+```
+
+---
+
+## 7. CLI Commands
+
+| Command | Needs App? |
+|---|---|
+| `aika init` | No |
+| `aika detect` / `aika detect --url` | No |
+| `aika flow create` / `aika flow show` | No |
+| `aika start` / `aika stop` | No / Yes |
+| `aika status` / `aika resume` | Yes |
+| `aika doctor` | Partial |
+
+---
+
+## 8. Package.json
+
+```jsonc
+{
+  "name": "@aikadev/aika", "version": "0.1.0",
+  "description": "AI Kit Awareness — One project. Many kits. Zero conflicts. Full awareness.",
+  "bin": { "aika": "dist/index.js" },
+  "files": ["dist/", "hooks/", "commands/", "catalog/", "schema/", "LICENSES/"],
+  "dependencies": { "commander": "^12.0.0", "glob": "^10.0.0" },
+  "license": "MIT", "engines": { "node": ">=18" }
+}
+```
