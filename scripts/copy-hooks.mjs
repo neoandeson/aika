@@ -15,7 +15,7 @@ if (!existsSync(srcHooks)) {
 mkdirSync(join(root, "dist", "hooks"), { recursive: true });
 cpSync(srcHooks, join(root, "dist", "hooks"), {
   recursive: true,
-  filter: (src) => src.endsWith(".mjs") || !src.includes("."),
+  filter: (src) => (src.endsWith(".mjs") && !src.includes(".test.")) || !src.includes("."),
 });
 
 console.log("copy-hooks: done.");
