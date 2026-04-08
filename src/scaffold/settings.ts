@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { getMcpUrl } from "../config.js";
 
 interface HookEntry {
   matcher?: string;
@@ -58,7 +59,7 @@ export async function mergeAikaSettings(projectDir: string): Promise<void> {
 
   if (!settings.mcpServers) settings.mcpServers = {};
   if (!settings.mcpServers.aika) {
-    settings.mcpServers.aika = { url: "http://localhost:4242/mcp" };
+    settings.mcpServers.aika = { url: getMcpUrl() };
   }
 
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n", "utf-8");

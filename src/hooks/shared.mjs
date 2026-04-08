@@ -1,7 +1,8 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-const CAPTURE_URL = "http://localhost:4242/api/capture";
+const AIKA_PORT = parseInt(process.env.AIKA_PORT, 10) || 4242;
+const CAPTURE_URL = `http://localhost:${AIKA_PORT}/api/capture`;
 const TIMEOUT_MS = 2000;
 
 /**

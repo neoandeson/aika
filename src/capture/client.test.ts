@@ -23,7 +23,7 @@ describe("postCapture", () => {
 
     expect(mockFetch).toHaveBeenCalledOnce();
     const [url, options] = mockFetch.mock.calls[0];
-    expect(url).toBe("http://localhost:4242/api/capture");
+    expect(url).toContain("/api/capture");
     expect(options.method).toBe("POST");
     expect(options.headers["Content-Type"]).toBe("application/json");
     expect(JSON.parse(options.body)).toEqual(event);

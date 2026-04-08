@@ -27,7 +27,7 @@ describe("mergeAikaSettings", () => {
     expect(settings.hooks.PostToolUse).toHaveLength(1);
     expect(settings.hooks.Stop).toHaveLength(1);
     expect(settings.hooks.SubagentStop).toHaveLength(1);
-    expect(settings.mcpServers.aika.url).toBe("http://localhost:4242/mcp");
+    expect(settings.mcpServers.aika.url).toContain("/mcp");
   });
 
   it("preserves existing hooks when merging", async () => {

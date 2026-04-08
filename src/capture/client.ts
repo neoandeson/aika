@@ -1,4 +1,5 @@
-const CAPTURE_URL = "http://localhost:4242/api/capture";
+import { getCaptureUrl } from "../config.js";
+
 const TIMEOUT_MS = 2000;
 
 export interface CaptureEvent {
@@ -12,7 +13,7 @@ export interface CaptureEvent {
 
 export async function postCapture(event: CaptureEvent): Promise<void> {
   try {
-    await fetch(CAPTURE_URL, {
+    await fetch(getCaptureUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(event),

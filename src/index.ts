@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { runInit } from "./commands/init.js";
+import { getPort } from "./config.js";
 
 const program = new Command();
 
@@ -18,7 +19,7 @@ program
       await runInit(projectDir);
       console.log("✓ Created .aika/hooks/ (4 files)");
       console.log("✓ Registered hooks in .claude/settings.json");
-      console.log("✓ Registered MCP server: aika → localhost:4242");
+      console.log(`✓ Registered MCP server: aika → localhost:${getPort()}`);
       console.log('  Run "aika start" to launch the desktop app.');
     } catch (err) {
       console.error("Error:", (err as Error).message);
