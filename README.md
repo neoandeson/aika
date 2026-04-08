@@ -8,6 +8,7 @@ Aika manages AI development kits (GSD, BMAD, gstack, OpenSpec, etc.) installed i
 
 - **Hooks** — Captures Claude Code activity (slash commands, file changes, session ends) into a local journal
 - **Journal** — Append-only `.aika/journal.jsonl` logs every kit command and file touched
+- **Context** — Auto-generates `.aika/context.md` on session end — a human-readable summary of what happened, for session resume
 - **Capture API** — Forwards events to the Aika desktop app for real-time awareness
 - **Scaffolding** — `aika init` sets up hooks and MCP registration in one command, non-destructively alongside other kits
 
@@ -50,12 +51,14 @@ Aika registers 3 hooks in `.claude/settings.json`:
 |------|-------|------------------|
 | `on-prompt.mjs` | `UserPromptSubmit` | Slash commands (`/gsd:execute-phase`, `/bmad:analyse`, etc.) |
 | `dispatcher.mjs` | `PostToolUse` | File changes from Write, Edit, MultiEdit, Bash |
-| `on-stop.mjs` | `Stop`, `SubagentStop` | Session end with transcript path |
+| `on-stop.mjs` | `Stop`, `SubagentStop` | Session end + auto-generates `context.md` |
 
 Each hook:
 1. Reads JSON from stdin (provided by Claude Code)
 2. Appends an event to `.aika/journal.jsonl`
 3. POSTs the event to the Aika desktop app (silent failure if not running)
+
+Additionally, `on-stop.mjs` reads the full journal and generates `.aika/context.md` — a summary of the session for quick resume.
 
 ### Journal Format
 
@@ -66,6 +69,34 @@ Each hook:
 {"ts":"2026-04-08T10:01:30Z","event":"file_change","file":"src/main.ts"}
 {"ts":"2026-04-08T10:15:00Z","event":"stop","transcript":"~/.claude/projects/.../session.jsonl"}
 ```
+
+### Context File
+
+`.aika/context.md` is auto-generated when a session ends. It provides:
+
+- **Last session summary** — which commands ran, which files were touched
+- **All-time stats** — total sessions, commands, files, kits used
+
+This is what `CLAUDE.md` points to for session resume. When you start a new session (or recover from a crash), the AI reads `context.md` and immediately knows what happened last.
+
+```markdown
+# Aika Context
+## Last Session
+**Commands run:**
+- `/gsd:execute-phase` (gsd)
+**Files touched:** 3
+- `src/app.ts`
+- `src/utils.ts`
+- `package.json`
+
+## Stats
+- **Sessions:** 5
+- **Total commands:** 12
+- **Total files touched:** 28
+- **Kits used:** gsd, bmad
+```
+
+The file is git-tracked (rest of `.aika/` is gitignored) so context survives across machines.
 
 ### Connecting to Aika Desktop App
 
@@ -154,8 +185,8 @@ src/
   hooks/
     on-prompt.mjs       # UserPromptSubmit hook
     dispatcher.mjs      # PostToolUse hook
-    on-stop.mjs         # Stop/SubagentStop hook
-    shared.mjs          # Common: journal write + capture POST
+    on-stop.mjs         # Stop/SubagentStop hook + context generation
+    shared.mjs          # Common: journal write, capture POST, context generation
   journal/
     writer.ts           # Journal append (TypeScript, for CLI use)
   capture/
