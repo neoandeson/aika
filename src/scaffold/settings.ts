@@ -29,10 +29,12 @@ const AIKA_HOOKS: Record<string, HookEntry> = {
   },
 };
 
+function isAikaHook(h: { command: string }): boolean {
+  return h.command.includes(".aika/hooks/");
+}
+
 function hasAikaEntry(entries: HookEntry[]): boolean {
-  return entries.some((entry) =>
-    entry.hooks.some((h) => h.command.includes(".aika/hooks/"))
-  );
+  return entries.some((entry) => entry.hooks.some(isAikaHook));
 }
 
 export async function mergeAikaSettings(projectDir: string): Promise<void> {
@@ -63,4 +65,52 @@ export async function mergeAikaSettings(projectDir: string): Promise<void> {
   }
 
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n", "utf-8");
+}
+
+export async function removeAikaSettings(projectDir: string): Promise<boolean> {
+  const settingsPath = join(projectDir, ".claude", "settings.json");
+  if (!existsSync(settingsPath)) return false;
+
+  const settings: Settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+  let changed = false;
+
+  // Remove Aika hooks — filter at hook level, not entry level
+  if (settings.hooks) {
+    for (const category of Object.keys(settings.hooks)) {
+      const entries = settings.hooks[category];
+      const filtered = entries
+        .map((entry) => {
+          const kept = entry.hooks.filter((h) => !isAikaHook(h));
+          if (kept.length === entry.hooks.length) return entry;
+          changed = true;
+          if (kept.length === 0) return null;
+          return { ...entry, hooks: kept };
+        })
+        .filter(Boolean) as HookEntry[];
+
+      if (filtered.length === 0) {
+        delete settings.hooks[category];
+      } else {
+        settings.hooks[category] = filtered;
+      }
+    }
+    if (Object.keys(settings.hooks).length === 0) {
+      delete settings.hooks;
+    }
+  }
+
+  // Remove Aika MCP server
+  if (settings.mcpServers?.aika) {
+    delete settings.mcpServers.aika;
+    changed = true;
+    if (Object.keys(settings.mcpServers).length === 0) {
+      delete settings.mcpServers;
+    }
+  }
+
+  if (changed) {
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n", "utf-8");
+  }
+
+  return changed;
 }

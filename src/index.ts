@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { runInit } from "./commands/init.js";
+import { runUninstall } from "./commands/uninstall.js";
 import { getPort } from "./config.js";
 
 const program = new Command();
@@ -21,6 +22,19 @@ program
       console.log("✓ Registered hooks in .claude/settings.json");
       console.log(`✓ Registered MCP server: aika → localhost:${getPort()}`);
       console.log('  Run "aika start" to launch the desktop app.');
+    } catch (err) {
+      console.error("Error:", (err as Error).message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("uninstall")
+  .description("Remove Aika from the current project — clean up hooks, settings, and data")
+  .action(async () => {
+    const projectDir = process.cwd();
+    try {
+      await runUninstall(projectDir);
     } catch (err) {
       console.error("Error:", (err as Error).message);
       process.exit(1);
