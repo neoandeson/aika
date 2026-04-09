@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Aika Journal Entry",
+  "description": "A single line in .aika/journal.jsonl",
+  "type": "object",
+  "required": ["ts", "event"],
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp"
+    },
+    "event": {
+      "type": "string",
+      "enum": ["command_start", "file_change", "stop"]
+    },
+    "kit": {
+      "type": "string",
+      "description": "Kit name (for command_start events)"
+    },
+    "command": {
+      "type": "string",
+      "description": "Slash command name (for command_start events)"
+    },
+    "file": {
+      "type": "string",
+      "description": "File path (for file_change events)"
+    },
+    "transcript": {
+      "type": "string",
+      "description": "Transcript path (for stop events)"
+    }
+  },
+  "additionalProperties": false
+}

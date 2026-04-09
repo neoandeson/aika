@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Aika Capture Event",
+  "description": "POST body sent to /api/capture on the Aika desktop app",
+  "type": "object",
+  "required": ["type", "project"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["command_start", "file_change", "session_stop"]
+    },
+    "project": {
+      "type": "string",
+      "description": "Absolute path to the project directory"
+    },
+    "kit": { "type": "string" },
+    "command": { "type": "string" },
+    "file": { "type": "string" },
+    "transcript": { "type": "string" }
+  },
+  "additionalProperties": false
+}

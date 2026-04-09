@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.aika/*
+!.aika/context.md
+research/
