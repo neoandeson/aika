@@ -22,7 +22,7 @@ describe("on-stop hook", () => {
       cwd: testDir,
       timeout: 5000,
       input: JSON.stringify(input),
-      env: { ...process.env, AIKA_PROJECT_DIR: testDir },
+      env: { ...process.env, AIKA_PROJECT_DIR: testDir, AIKA_PORT: "19999" },
     });
   }
 

@@ -11,8 +11,31 @@
     "copy-hooks": "node scripts/copy-hooks.mjs",
     "dev": "tsc --watch",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build && npm test"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neoandeson/aika.git"
+  },
+  "keywords": [
+    "claude-code",
+    "ai",
+    "hooks",
+    "mcp",
+    "cli",
+    "kit",
+    "gsd",
+    "bmad",
+    "gstack",
+    "workflow",
+    "developer-tools"
+  ],
+  "author": "neoandeson",
+  "bugs": {
+    "url": "https://github.com/neoandeson/aika/issues"
+  },
+  "homepage": "https://github.com/neoandeson/aika#readme",
   "files": [
     "dist/",
     "schema/"
