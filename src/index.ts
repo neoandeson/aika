@@ -15,7 +15,7 @@ program
     "  This package (aika-hook) provides the CLI and hooks.\n" +
     "  For the full GUI dashboard, install aika-app: https://github.com/neoandeson/aika-app"
   )
-  .version("0.1.1");
+  .version("0.1.2");
 
 program
   .command("init")
